@@ -4,60 +4,61 @@ import java.io.File
 import java.nio.file.Files
 import kotlin.concurrent.thread
 
+data class FileTypePattern(val priority: Int, val pattern: String, val fileType: String){
+    override fun toString(): String {
+        return "'$priority', '$pattern', '$fileType'"
+    }
+}
+
 fun main(args: Array<String>) {
-    if (args.size != 3) {
+    if (args.size != 2) {
         println("Invalid number of args")
         return
     }
 
 
     val folderName = args[0]
-    val P = args[1]
-    val R = args[2]
+    val dbFile = args[1]
+
+    val patterns = readPatternDBFile(dbFile).sortedByDescending { it.priority }
 
     val files = File(folderName).listFiles()
-    val matches = MutableList(files!!.size) { false }
-    val bytesP = P.toByteArray()
-//    val startTimeNano = System.nanoTime()
+    val matches = MutableList(files!!.size) { -1 }
+    val patternsByts = patterns.map { it.pattern.toByteArray() }
 
-//    val isMatch = checkFile(fn,bytesP)
-//    val endTimeNano = System.nanoTime()
-
-//    val nanoToSec = 10.0
-//    val takenTimeSeconds = (endTimeNano - startTimeNano) / nanoToSec.pow(-6)
-//    println("It took $takenTimeSeconds seconds")
 
     for (f in files.withIndex()) {
         thread {
-
-            matches[f.index] = checkFile(f.value, bytesP)
-            val type=if (matches[f.index]) R else "Unknown file type"
+            matches[f.index] = checkFile(f.value, patternsByts)
+            val type = if (matches[f.index] != -1) patterns[matches[f.index]].fileType else "Unknown file type"
             println("${f.value.name}: $type")
         }.join()
 
     }
+    println(patterns.joinToString("\n"))
 }
 
-fun checkFile(file: File, bytesP: ByteArray): Boolean {
-    val bytes = Files.readAllBytes(file.toPath()).toList()
-    return KMPSearch(bytesP, bytes)
+fun readPatternDBFile(dbFile: String): List<FileTypePattern> {
+    val list = mutableListOf<FileTypePattern>()
+    for (line in File(dbFile).readLines()) {
+        val tokens = line.split(";").map { it.trim('"') }
+        list.add(FileTypePattern(tokens[0].toInt(), tokens[1], tokens[2]))
+    }
+    return list
 }
-//fun naiveSearch( bytesP: ByteArray, bytes: List<Byte>): Boolean {
-////    var indexes = bytes.indexesOf(bytesP[0])
-//    var isMatch = false
-//    for (index in 0 .. bytes.lastIndex - bytesP.size+1) {
-//        isMatch = true
-//        for (n in 0..bytesP.lastIndex) {
-//            if ( bytesP[n] != bytes[index + n]) {
-//                isMatch = false
-//                break
-//            }
-//        }
-//        if (isMatch)
-//            break
-//    }
-//    return isMatch
-//}
+
+fun checkFile(file: File, patternsBytes: List<ByteArray>): Int {
+    val bytes = Files.readAllBytes(file.toPath()).toList()
+    var index = -1
+    for (bytesP in patternsBytes.withIndex()) {
+        if (KMPSearch(bytesP.value, bytes)) {
+            index = bytesP.index
+            break
+        }
+    }
+    return index
+}
+
 
 fun KMPSearch(bytesP: ByteArray, bytes: List<Byte>): Boolean {
     val prefixFunction = prefix(bytesP)

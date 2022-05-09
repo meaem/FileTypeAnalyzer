@@ -51,7 +51,7 @@ fun checkFile(file: File, patternsBytes: List<ByteArray>): Int {
     val bytes = Files.readAllBytes(file.toPath()).toList()
     var index = -1
     for (bytesP in patternsBytes.withIndex()) {
-        if (KMPSearch(bytesP.value, bytes)) {
+        if (RKSearch(bytesP.value, bytes)) {
             index = bytesP.index
             break
         }
@@ -60,7 +60,9 @@ fun checkFile(file: File, patternsBytes: List<ByteArray>): Int {
 }
 
 
-fun KMPSearch(bytesP: ByteArray, bytes: List<Byte>): Boolean {
+
+
+fun RKSearch(bytesP: ByteArray, bytes: List<Byte>): Boolean {
     val prefixFunction = prefix(bytesP)
 
     var isMatch = false
@@ -85,7 +87,7 @@ fun KMPSearch(bytesP: ByteArray, bytes: List<Byte>): Boolean {
     }
     return isMatch
 }
-
+//
 fun prefix(bytesP: ByteArray): MutableList<Int> {
     var lastCount = 0
     val result = mutableListOf(lastCount)
